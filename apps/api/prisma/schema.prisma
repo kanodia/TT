@@ -1,0 +1,802 @@
+// TwiggyTomato data model (spec section 9).
+// PostgreSQL + PostGIS. Money is stored in minor units (paise) with a currency code; the API
+// speaks whole rupees and converts at the boundary (lib/money.ts). `restaurants.location` is a
+// generated PostGIS column created in SQL (see migrations) and used for radius search.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pg_trgm, unaccent]
+}
+
+// ---------- People & auth ----------
+
+model User {
+  id                  String    @id @default(uuid())
+  name                String?
+  phone               String    @unique
+  email               String?
+  avatarUrl           String?
+  role                String    @default("user") // user | field_agent | field_supervisor | admin
+  status              String    @default("active") // active | suspended | deleted
+  phoneVerified       Boolean   @default(false)
+  lastLoginAt         DateTime?
+  notificationPrefs   Json      @default("{}")
+  deletionRequestedAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  reviews       Review[]
+  replies       ReviewReply[]
+  votes         ReviewVote[]
+  memberships   RestaurantMember[]
+  lists         SavedList[]
+  addresses     UserAddress[]
+  submissions   FieldSubmission[]
+  assignedLeads Lead[]
+  refreshTokens RefreshToken[]
+  assignments   FieldAssignment[]
+  visits        FieldVisit[]
+  notifications Notification[]
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+/// Refresh tokens are stored hashed and rotated on every use (spec 11.2).
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserAddress {
+  id          String   @id @default(uuid())
+  userId      String
+  label       String   @default("other") // home | work | other
+  addressText String
+  lat         Float
+  lng         Float
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------- Places & catalogue ----------
+
+model City {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  nameHi    String?
+  state     String
+  country   String   @default("IN")
+  timezone  String   @default("Asia/Kolkata")
+  lat       Float
+  lng       Float
+  isLive    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  localities  Locality[]
+  restaurants Restaurant[]
+  leads       Lead[]
+  areas       FieldArea[]
+  collections Collection[]
+  settings    AppSetting[]
+  waitlist    CityWaitlist[]
+}
+
+model Locality {
+  id        String   @id @default(uuid())
+  cityId    String
+  name      String
+  nameHi    String?
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  city        City         @relation(fields: [cityId], references: [id])
+  restaurants Restaurant[]
+
+  @@index([cityId])
+}
+
+/// "Notify me when you launch here" (spec 2.1).
+model CityWaitlist {
+  id        String   @id @default(uuid())
+  phone     String
+  lat       Float
+  lng       Float
+  cityId    String?
+  createdAt DateTime @default(now())
+
+  city City? @relation(fields: [cityId], references: [id])
+}
+
+model Cuisine {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  nameHi    String?
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurants RestaurantCuisine[]
+}
+
+model EstablishmentType {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  nameHi    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurants Restaurant[]
+}
+
+model Attribute {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  name      String
+  nameHi    String?
+  group     String // feature | dietary | service | payment | occasion
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurants RestaurantAttribute[]
+}
+
+/// Search synonyms and common misspellings: "biriyani" → "biryani" (spec 3.1).
+model SearchSynonym {
+  term      String @id
+  canonical String
+}
+
+model Restaurant {
+  id                     String    @id @default(uuid())
+  slug                   String    @unique
+  name                   String
+  nameHi                 String?
+  description            String?
+  cityId                 String
+  localityId             String?
+  addressLine            String
+  landmark               String?
+  pincode                String?
+  lat                    Float
+  lng                    Float
+  location               Unsupported("geography(Point, 4326)")?
+  phone                  String?
+  whatsapp               String?
+  website                String?
+  bookingUrl             String?
+  socialLinks            Json      @default("{}") // { instagram, facebook, youtube }
+  typeId                 String?
+  currency               String    @default("INR")
+  costForTwoPaise        Int       @default(0)
+  priceBand              Int       @default(1) // 1-4
+  status                 String    @default("draft") // draft | pending | live | rejected | suspended | closed
+  isVerified             Boolean   @default(false)
+  isClaimed              Boolean   @default(false)
+  source                 String    @default("partner") // partner | field | web_lead | admin
+  sourceRef              String?
+  capturedById           String?
+  ownerConsent           Boolean   @default(false)
+  temporarilyClosedUntil DateTime?
+  fssaiNumber            String?
+  lastInspectionOn       DateTime? @db.Date
+  knownFor               String[]  @default([])
+  parkingInfo            String?
+  allergenNotes          String?
+  dressCode              String?
+  agePolicy              String?
+  alcoholPolicy          String?
+  avgWaitMins            Int?
+  bestTimeToVisit        String?
+  avgRating              Float     @default(0)
+  reviewCount            Int       @default(0)
+  ratingBreakdown        Json      @default("[0,0,0,0,0]") // counts of 1..5 stars
+  reviewSummary          String?
+  reviewSummaryAt        DateTime?
+  hoursConfirmedAt       DateTime?
+  menuUpdatedAt          DateTime?
+  deletedAt              DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  city         City                  @relation(fields: [cityId], references: [id])
+  locality     Locality?             @relation(fields: [localityId], references: [id])
+  type         EstablishmentType?    @relation(fields: [typeId], references: [id])
+  cuisines     RestaurantCuisine[]
+  attributes   RestaurantAttribute[]
+  hours        OpeningHour[]
+  specialHours SpecialHour[]
+  menuSections MenuSection[]
+  menuItems    MenuItem[]
+  photos       Photo[]
+  reviews      Review[]
+  offers       Offer[]
+  members      RestaurantMember[]
+  listItems    SavedListItem[]
+  verification VerificationRequest[]
+  sponsored    SponsoredPlacement[]
+  stats        AnalyticsDaily[]
+  collections  CollectionRestaurant[]
+  visits       FieldVisit[]
+
+  @@index([cityId, status])
+  @@index([location], type: Gist)
+}
+
+model RestaurantCuisine {
+  restaurantId String
+  cuisineId    String
+  isPrimary    Boolean @default(false)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  cuisine    Cuisine    @relation(fields: [cuisineId], references: [id])
+
+  @@id([restaurantId, cuisineId])
+}
+
+model RestaurantAttribute {
+  restaurantId String
+  attributeId  String
+  value        Json? // optional detail, e.g. parking: "valet"
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  attribute  Attribute  @relation(fields: [attributeId], references: [id])
+
+  @@id([restaurantId, attributeId])
+}
+
+model OpeningHour {
+  id           String @id @default(uuid())
+  restaurantId String
+  dayOfWeek    Int // 0 = Sunday
+  shiftNo      Int    @default(1)
+  opensAt      String // "HH:MM"
+  closesAt     String // "HH:MM"; earlier than opensAt means past midnight
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
+}
+
+/// Holidays and one-off changes that override the weekly schedule for a date (spec 4.2, 5.2).
+model SpecialHour {
+  id           String   @id @default(uuid())
+  restaurantId String
+  date         DateTime @db.Date
+  isClosed     Boolean  @default(true)
+  opensAt      String?
+  closesAt     String?
+  note         String?
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, date])
+}
+
+// ---------- Menu ----------
+
+model MenuSection {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items      MenuItem[]
+}
+
+model MenuItem {
+  id           String   @id @default(uuid())
+  sectionId    String
+  restaurantId String
+  name         String
+  description  String?
+  currency     String   @default("INR")
+  pricePaise   Int
+  diet         String   @default("veg") // veg | non_veg | egg | vegan
+  spiceLevel   Int      @default(0) // 0-3
+  tags         String[] @default([]) // bestseller | chef_special | new
+  allergens    String[] @default([])
+  photoUrl     String?
+  isAvailable  Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  section    MenuSection       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  restaurant Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  variants   MenuItemVariant[]
+  reviews    ReviewDish[]
+
+  @@index([restaurantId])
+}
+
+/// Half / Full, Regular / Large (spec 4.3).
+model MenuItemVariant {
+  id         String @id @default(uuid())
+  itemId     String
+  name       String
+  pricePaise Int
+  sortOrder  Int    @default(0)
+
+  item MenuItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Photos & reviews ----------
+
+model Photo {
+  id           String    @id @default(uuid())
+  restaurantId String
+  uploadedById String?
+  source       String    @default("partner") // partner | diner | field
+  category     String    @default("food") // food | ambience | menu | exterior
+  url          String
+  width        Int?
+  height       Int?
+  status       String    @default("approved") // pending | approved | rejected
+  isCover      Boolean   @default(false)
+  sortOrder    Int       @default(0)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  reviews    ReviewPhoto[]
+
+  @@index([restaurantId, status])
+}
+
+model Review {
+  id             String    @id @default(uuid())
+  restaurantId   String
+  userId         String
+  rating         Int
+  foodRating     Int?
+  serviceRating  Int?
+  ambienceRating Int?
+  valueRating    Int?
+  text           String
+  visitType      String    @default("dine_in") // dine_in | takeaway
+  visitedOn      DateTime? @db.Date
+  helpfulCount   Int       @default(0)
+  status         String    @default("published") // published | pending | hidden | removed
+  flagReasons    String[]  @default([])
+  deviceId       String?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id])
+  reply      ReviewReply?
+  votes      ReviewVote[]
+  photos     ReviewPhoto[]
+  dishes     ReviewDish[]
+
+  @@index([restaurantId, createdAt(sort: Desc)])
+  @@index([userId, createdAt])
+}
+
+model ReviewPhoto {
+  reviewId String
+  photoId  String
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  photo  Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, photoId])
+}
+
+model ReviewDish {
+  reviewId   String
+  menuItemId String
+
+  review   Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, menuItemId])
+}
+
+model ReviewReply {
+  id        String   @id @default(uuid())
+  reviewId  String   @unique
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model ReviewVote {
+  reviewId  String
+  userId    String
+  type      String   @default("helpful")
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@id([reviewId, userId])
+}
+
+// ---------- Offers, lists, collections ----------
+
+model Offer {
+  id            String    @id @default(uuid())
+  restaurantId  String
+  title         String
+  terms         String?
+  discountType  String    @default("percent") // percent | flat | bogo | other
+  /// Percent points for `percent`, paise for `flat`.
+  value         Int?
+  validDays     Int[]     @default([0, 1, 2, 3, 4, 5, 6])
+  validFromTime String? // "HH:MM" in the city timezone
+  validToTime   String?
+  startsOn      DateTime?
+  endsOn        DateTime?
+  status        String    @default("active") // active | paused | ended
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+/// Personal lists: "Want to go", "Favourites" and custom lists, shareable by link (spec 3.4).
+model SavedList {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  kind      String   @default("custom") // want_to_go | favourites | custom
+  isPublic  Boolean  @default(false)
+  shareSlug String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items SavedListItem[]
+
+  @@index([userId])
+}
+
+model SavedListItem {
+  listId       String
+  restaurantId String
+  addedAt      DateTime @default(now())
+
+  list       SavedList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([listId, restaurantId])
+}
+
+model Collection {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  cityId      String?
+  title       String
+  titleHi     String?
+  description String?
+  coverUrl    String?
+  type        String    @default("editorial") // editorial | auto
+  /// For auto collections: a listing query, e.g. { "attributes": ["rooftop"] }.
+  rules       Json?
+  startsOn    DateTime?
+  endsOn      DateTime?
+  isPublished Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  city        City?                  @relation(fields: [cityId], references: [id])
+  restaurants CollectionRestaurant[]
+}
+
+model CollectionRestaurant {
+  collectionId String
+  restaurantId String
+  sortOrder    Int    @default(0)
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, restaurantId])
+}
+
+// ---------- Partners & verification ----------
+
+model RestaurantMember {
+  restaurantId String
+  userId       String
+  role         String   @default("owner") // owner | manager | staff
+  status       String   @default("active") // active | invited
+  invitedById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@id([restaurantId, userId])
+}
+
+model VerificationRequest {
+  id            String   @id @default(uuid())
+  restaurantId  String
+  submittedById String
+  type          String // new | claim | core_change
+  note          String?
+  /// Requested field changes for core_change.
+  payload       Json?
+  documents     String[] @default([])
+  status        String   @default("pending") // pending | approved | rejected
+  reviewerId    String?
+  decisionNote  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model Report {
+  id           String   @id @default(uuid())
+  reporterId   String
+  targetType   String // review | photo | restaurant
+  targetId     String
+  reason       String
+  details      String?
+  /// Diner-suggested corrections for wrong_* reports, applied in one click by an admin.
+  proposed     Json?
+  status       String   @default("open") // open | resolved | dismissed
+  resolvedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model SponsoredPlacement {
+  id           String   @id @default(uuid())
+  restaurantId String
+  cityId       String?
+  slot         Int      @default(1)
+  startsOn     DateTime
+  endsOn       DateTime
+  createdAt    DateTime @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Field operations (spec 7, 9.3) ----------
+
+model Lead {
+  id           String   @id @default(uuid())
+  cityId       String
+  areaId       String?
+  name         String
+  address      String?
+  lat          Float?
+  lng          Float?
+  phone        String?
+  source       String   @default("other") // google_maps | justdial | social | directory | other
+  sourceUrl    String?
+  /// Google place_id only — never Google's content (spec 7.2).
+  placeId      String?
+  status       String   @default("new") // new | assigned | verified | rejected | duplicate
+  assignedToId String?
+  restaurantId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  city       City         @relation(fields: [cityId], references: [id])
+  area       FieldArea?   @relation(fields: [areaId], references: [id])
+  assignedTo User?        @relation(fields: [assignedToId], references: [id])
+  visits     FieldVisit[]
+
+  @@index([assignedToId, status])
+}
+
+/// A beat: town, ward or road stretch. Boundary is a GeoJSON polygon.
+model FieldArea {
+  id        String   @id @default(uuid())
+  cityId    String
+  name      String
+  boundary  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  city        City              @relation(fields: [cityId], references: [id])
+  assignments FieldAssignment[]
+  leads       Lead[]
+}
+
+model FieldAssignment {
+  id        String    @id @default(uuid())
+  areaId    String
+  agentId   String
+  startsOn  DateTime  @db.Date
+  endsOn    DateTime? @db.Date
+  createdAt DateTime  @default(now())
+
+  area  FieldArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  agent User      @relation(fields: [agentId], references: [id])
+
+  @@index([agentId])
+}
+
+model FieldSubmission {
+  id           String   @id @default(uuid())
+  agentId      String
+  leadId       String?
+  restaurantId String?
+  clientUuid   String   @unique // makes offline sync idempotent
+  payload      Json
+  gpsAccuracyM Float?
+  status       String   @default("submitted") // submitted | approved | sent_back
+  reviewerId   String?
+  reviewNote   String?
+  capturedAt   DateTime
+  syncedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  agent User @relation(fields: [agentId], references: [id])
+
+  @@index([status, syncedAt])
+}
+
+model FieldVisit {
+  id           String    @id @default(uuid())
+  agentId      String
+  restaurantId String?
+  leadId       String?
+  clientUuid   String?   @unique
+  outcome      String // captured | closed | refused | revisit | duplicate | not_found
+  revisitOn    DateTime? @db.Date
+  note         String?
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime  @default(now())
+
+  agent      User        @relation(fields: [agentId], references: [id])
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+  lead       Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([agentId, createdAt])
+}
+
+// ---------- Analytics, notifications, settings, audit ----------
+
+model AnalyticsDaily {
+  restaurantId      String
+  date              String // YYYY-MM-DD in IST
+  views             Int    @default(0)
+  searchImpressions Int    @default(0)
+  calls             Int    @default(0)
+  directions        Int    @default(0)
+  saves             Int    @default(0)
+  shares            Int    @default(0)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, date])
+}
+
+/// Raw product events (spec 11.3). Exported to the warehouse; never holds precise location history.
+model Event {
+  id           String   @id @default(uuid())
+  name         String
+  userId       String?
+  anonId       String?
+  restaurantId String?
+  props        Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([name, createdAt])
+}
+
+/// Outbox for SMS, email, push and in-app messages; the worker delivers pending rows.
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String?
+  channel   String // sms | email | push | in_app
+  template  String
+  to        String?
+  payload   Json      @default("{}")
+  status    String    @default("pending") // pending | sent | failed | skipped
+  sendAfter DateTime  @default(now())
+  sentAt    DateTime?
+  readAt    DateTime?
+  error     String?
+  createdAt DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, sendAfter])
+  @@index([userId, channel, createdAt])
+}
+
+/// Feature flags: global row has cityId = null; a city row overrides it (spec 9.3).
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String
+  cityId    String?
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  city City? @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([key, cityId])
+}
+
+/// One active row; every app reads it at start-up through /v1/config (spec 11.6).
+model BrandConfig {
+  id           String   @id @default(uuid())
+  appName      String
+  shortName    String
+  tagline      String
+  taglineHi    String
+  logoUrl      String?
+  iconUrl      String?
+  primaryColor String
+  supportEmail String
+  supportPhone String
+  webDomain    String?
+  active       Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

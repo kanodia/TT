@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* --brand is overwritten at runtime from /v1/config (admin-editable brand colour). */
+:root {
+  --brand: #e23744;
+  --background: #ffffff;
+  --foreground: #1c1c1c;
+  --muted: #6b6b6b;
+  --surface: #f6f6f6;
+  --border: #e8e8e8;
+  --good: #267e3e;
+  --warn: #b45309;
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Component classes live in the components layer so utilities (px-2, bg-good…) can override them. */
+@layer components {
+  /* Form controls share one look across diner, partner, field and admin screens. */
+  .input {
+    @apply w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-surface;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-muted;
+  }
+  .btn,
+  .btn-primary,
+  .btn-outline,
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand text-white hover:brightness-95;
+  }
+  .btn-outline {
+    @apply border border-border bg-white hover:bg-surface;
+  }
+  .btn-ghost {
+    @apply hover:bg-surface;
+  }
+  .chip {
+    @apply inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-sm whitespace-nowrap hover:bg-surface;
+  }
+  .chip-on {
+    @apply border-brand bg-brand/10 text-brand hover:bg-brand/15;
+  }
+  .card {
+    @apply rounded-xl border border-border bg-white;
+  }
+}
