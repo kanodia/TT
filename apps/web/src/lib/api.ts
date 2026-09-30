@@ -93,9 +93,13 @@ function refreshTokens() {
   return refreshing;
 }
 
+// Staging only: lets the team use on-screen sign-in codes before SMS is live (see API DEV_OTP_KEY).
+const DEV_OTP_KEY = process.env.NEXT_PUBLIC_DEV_OTP_KEY;
+
 function headers(token: string | null, json: boolean) {
   const device = deviceId();
   return {
+    ...(DEV_OTP_KEY ? { 'x-dev-otp-key': DEV_OTP_KEY } : {}),
     ...(json ? { 'content-type': 'application/json' } : {}),
     ...(token ? { authorization: `Bearer ${token}` } : {}),
     ...(device ? { 'x-device-id': device } : {}),

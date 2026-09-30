@@ -35,6 +35,22 @@ describe('auth', () => {
     assert.equal((await call('POST', '/v1/auth/refresh', { body: { refreshToken: t.refreshToken } })).status, 401);
   });
 
+  test('on staging, dev sign-in needs the DEV_OTP_KEY header', async () => {
+    process.env.DEV_OTP_KEY = 'staging-secret';
+    try {
+      const phone = freshPhone();
+      const open = await call('POST', '/v1/auth/otp/request', { body: { phone } });
+      assert.equal(open.body.devCode, undefined, 'no code leaked without the key');
+      assert.equal((await call('POST', '/v1/auth/otp/verify', { body: { phone, code: '123456' } })).status, 400);
+      const headers = { 'x-dev-otp-key': 'staging-secret' };
+      const keyed = await call('POST', '/v1/auth/otp/request', { body: { phone }, headers });
+      assert.match(keyed.body.devCode, /^\d{6}$/);
+      assert.equal((await call('POST', '/v1/auth/otp/verify', { body: { phone, code: '123456' }, headers })).status, 200);
+    } finally {
+      delete process.env.DEV_OTP_KEY;
+    }
+  });
+
   test('wrong OTP is rejected', async () => {
     assert.equal((await call('POST', '/v1/auth/otp/verify', { body: { phone: freshPhone(), code: '000000' } })).status, 400);
   });

@@ -1,0 +1,56 @@
+# Render blueprint for the staging API (web app is on Vercel, database on Neon, photos on Cloudflare R2).
+# In Render: New → Blueprint → pick this repo. Values marked `sync: false` are asked for on first deploy.
+services:
+  - type: web
+    name: twiggytomato-api-staging
+    runtime: node
+    # Starter keeps the instance awake so the background worker's daily jobs run; free instances sleep.
+    plan: starter
+    region: singapore
+    rootDir: apps/api
+    branch: main
+    buildCommand: npm ci && npx prisma generate
+    # Migrations are safe to re-run; each deploy applies any new ones before the server starts.
+    startCommand: npx prisma migrate deploy && npm run serve
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: '22'
+      - key: TRUST_PROXY
+        value: '1'
+      - key: LOG_LEVEL
+        value: info
+      # Neon connection string (use the direct, non-pooled one), e.g. postgresql://…neon.tech/twiggytomato?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Copy this value into Vercel's INTERNAL_API_KEY.
+      - key: INTERNAL_API_KEY
+        generateValue: true
+      # Staging only, until DLT-registered SMS works: dev sign-in codes need this key. Copy it into
+      # Vercel's NEXT_PUBLIC_DEV_OTP_KEY. Delete it in production.
+      - key: DEV_OTP_KEY
+        generateValue: true
+      # The Vercel URL, e.g. https://twiggytomato-staging.vercel.app (comma-separate several).
+      - key: WEB_ORIGIN
+        sync: false
+      - key: WEB_PUBLIC_URL
+        sync: false
+      # Cloudflare R2 (S3-compatible) for photos and private documents.
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PRIVATE_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # Public URL of the photos bucket (R2 public bucket URL or custom domain).
+      - key: MEDIA_BASE_URL
+        sync: false

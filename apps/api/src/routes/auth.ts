@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { z } from 'zod';
 import { issueTokens, permissionsFor, requireUser, revokeRefreshToken, rotateRefreshToken } from '../lib/auth.js';
@@ -9,12 +9,23 @@ import { notify, TEMPLATES } from '../lib/notify.js';
 import { getBrand } from '../lib/settings.js';
 
 const phoneSchema = z.string().regex(/^[6-9]\d{9}$/, 'Enter a 10-digit Indian mobile number');
-const isDev = process.env.NODE_ENV !== 'production';
 const DEV_MASTER_CODE = '123456';
+
+/**
+ * Dev sign-in (code shown on screen, 123456 always works) is on for local development.
+ * On a deployed staging server set DEV_OTP_KEY: dev sign-in then only works for requests that
+ * carry that key in `x-dev-otp-key`, so the public API can't be used to sign in as anyone.
+ * In production without DEV_OTP_KEY it is always off.
+ */
+function devOtpAllowed(req: FastifyRequest) {
+  const key = process.env.DEV_OTP_KEY;
+  if (key) return req.headers['x-dev-otp-key'] === key;
+  return process.env.NODE_ENV !== 'production';
+}
 const OTP_PER_HOUR = 5;
 
-/** Checks a phone OTP and marks it used. The dev master code only works outside production. */
-async function consumeOtp(phone: string, code: string) {
+/** Checks a phone OTP and marks it used. The dev master code only works where dev sign-in is allowed. */
+async function consumeOtp(phone: string, code: string, isDev: boolean) {
   const otp = await prisma.otpCode.findFirst({
     where: { phone, code, used: false, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
@@ -51,7 +62,7 @@ export async function authRoutes(app: FastifyInstance) {
     const code = String(randomInt(100000, 1000000));
     await prisma.otpCode.create({ data: { phone, code, expiresAt: new Date(Date.now() + 10 * 60_000) } });
     await notify({ to: phone, channel: 'sms', template: 'otp', payload: { code } });
-    return { sent: true, ...(isDev ? { devCode: code } : {}) };
+    return { sent: true, ...(devOtpAllowed(req) ? { devCode: code } : {}) };
   });
 
   app.post('/v1/auth/otp/verify', async (req) => {
@@ -59,7 +70,7 @@ export async function authRoutes(app: FastifyInstance) {
       z.object({ phone: phoneSchema, code: z.string().length(6), name: z.string().max(80).optional() }),
       req.body,
     );
-    await consumeOtp(body.phone, body.code);
+    await consumeOtp(body.phone, body.code, devOtpAllowed(req));
     const user = await prisma.user.upsert({
       where: { phone: body.phone },
       create: { phone: body.phone, name: body.name },
@@ -88,7 +99,7 @@ export async function authRoutes(app: FastifyInstance) {
     const existing = await prisma.user.findFirst({ where: { email } });
     if (existing) return signedIn(app, existing.id, req.headers['user-agent']);
     if (!body.phone || !body.code) throw new HttpError(409, 'phone_required', 'Verify your mobile number to finish signing in', { email });
-    await consumeOtp(body.phone, body.code);
+    await consumeOtp(body.phone, body.code, devOtpAllowed(req));
     const user = await prisma.user.upsert({
       where: { phone: body.phone },
       create: { phone: body.phone, email, name: body.name },

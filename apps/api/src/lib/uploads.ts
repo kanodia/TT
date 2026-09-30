@@ -20,7 +20,13 @@ export const PRIVATE_MIME: Record<string, string> = { jpg: 'image/jpeg', png: 'i
 /** Three sizes served as WebP (spec 11.1). Stored URL points at `md`; clients swap the suffix. */
 export const SIZES = { sm: 320, md: 800, lg: 1600 } as const;
 
-const s3 = process.env.S3_BUCKET ? new S3Client({ region: process.env.AWS_REGION ?? 'ap-south-1' }) : null;
+// S3_ENDPOINT points the same client at an S3-compatible store such as Cloudflare R2.
+const s3 = process.env.S3_BUCKET
+  ? new S3Client({
+      region: process.env.AWS_REGION ?? (process.env.S3_ENDPOINT ? 'auto' : 'ap-south-1'),
+      ...(process.env.S3_ENDPOINT ? { endpoint: process.env.S3_ENDPOINT, forcePathStyle: true } : {}),
+    })
+  : null;
 const PUBLIC_BUCKET = process.env.S3_BUCKET;
 const PRIVATE_BUCKET = process.env.S3_PRIVATE_BUCKET ?? process.env.S3_BUCKET;
 
