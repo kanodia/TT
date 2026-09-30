@@ -452,6 +452,12 @@ export function Footer() {
           <Link href="/account#privacy" className="block text-muted hover:text-foreground">
             {t('footer.privacy')}
           </Link>
+          <Link href="/privacy" className="block text-muted hover:text-foreground">
+            {t('legal.privacy')}
+          </Link>
+          <Link href="/terms" className="block text-muted hover:text-foreground">
+            {t('legal.terms')}
+          </Link>
         </div>
       </div>
     </footer>

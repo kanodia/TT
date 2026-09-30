@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import type { FastifyBaseLogger } from 'fastify';
+import { Sentry } from '../instrument.js';
 import { prisma } from './db.js';
 import { localDate, localTime } from './hours.js';
 import { notify, notifyTeam, TEMPLATES, type Template } from './notify.js';
@@ -107,6 +108,7 @@ async function daily(name: string, hour: number, fn: () => Promise<unknown>, log
     log.info({ job: name, result }, 'daily job done');
   } catch (e) {
     log.error({ err: e, job: name }, 'daily job failed');
+    Sentry.captureException(e, { tags: { job: name } });
   }
 }
 
@@ -297,6 +299,7 @@ export function startWorker(log: Log, everyMs = 15_000) {
       await tick(log);
     } catch (e) {
       log.error({ err: e }, 'worker tick failed');
+      Sentry.captureException(e);
     } finally {
       running = false;
     }

@@ -168,6 +168,18 @@ export function LoginForm({ onDone, intro }: { onDone?: () => void; intro?: stri
           </button>
         </form>
       )}
+
+      <p className="text-center text-xs text-muted">
+        {t('auth.agree')}{' '}
+        <Link href="/terms" target="_blank" className="underline">
+          {t('legal.terms')}
+        </Link>{' '}
+        {t('legal.and')}{' '}
+        <Link href="/privacy" target="_blank" className="underline">
+          {t('legal.privacy')}
+        </Link>
+        .
+      </p>
     </div>
   );
 }

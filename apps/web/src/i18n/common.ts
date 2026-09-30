@@ -108,6 +108,10 @@ const en = {
   'notif.markRead': 'Mark all read',
 
   'lang.switchTo': 'हिन्दी में देखें',
+  'auth.agree': 'By continuing you agree to our',
+  'legal.terms': 'Terms of Use',
+  'legal.and': 'and',
+  'legal.privacy': 'Privacy Policy',
   'hours.opens': 'opens',
   'hours.closes': 'closes',
   'hours.nextDay': 'next day',
@@ -237,6 +241,10 @@ const hi: Partial<Record<keyof typeof en, string>> = {
   'notif.markRead': 'सब पढ़ा हुआ करें',
 
   'lang.switchTo': 'View in English',
+  'auth.agree': 'आगे बढ़कर आप हमारी',
+  'legal.terms': 'उपयोग की शर्तें',
+  'legal.and': 'और',
+  'legal.privacy': 'गोपनीयता नीति से सहमत होते हैं',
   'hours.opens': 'खुलता है',
   'hours.closes': 'बंद होता है',
   'hours.nextDay': 'अगले दिन',

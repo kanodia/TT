@@ -1,3 +1,5 @@
+// Sentry must initialise before anything else is imported.
+import './instrument.js';
 import { buildApp } from './app.js';
 import { startWorker } from './lib/worker.js';
 

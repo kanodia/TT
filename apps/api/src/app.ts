@@ -5,6 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyRequest } from 'fastify';
 import { mkdirSync } from 'node:fs';
+import { Sentry } from './instrument.js';
 import { requireRole, requireUser } from './lib/auth.js';
 import { HttpError, badRequest, notFound } from './lib/http.js';
 import { z } from 'zod';
@@ -72,7 +73,10 @@ export async function buildApp() {
       return reply.code(404).send({ error: { code: 'not_found', message: 'Not found' } });
     }
     const status = error.statusCode ?? 500;
-    if (status >= 500) app.log.error(error);
+    if (status >= 500) {
+      app.log.error(error);
+      Sentry.captureException(error);
+    }
     if (status === 429) {
       return reply.code(429).send({ error: { code: 'rate_limited', message: error.message || 'Too many requests. Please slow down.' } });
     }
