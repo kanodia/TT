@@ -1,0 +1,52 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://twiggytomato-api-staging.onrender.com",
+        "EXPO_PUBLIC_WEB_URL": "https://twiggytomato-staging.vercel.app"
+      }
+    },
+    "diner-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "diner"
+      }
+    },
+    "field-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "field"
+      }
+    },
+    "diner-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "diner"
+      }
+    },
+    "field-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "field"
+      }
+    }
+  },
+  "submit": {
+    "diner-production": {},
+    "field-production": {}
+  }
+}

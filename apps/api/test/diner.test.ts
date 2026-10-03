@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, describe, test } from 'node:test';
 import { prisma } from '../src/lib/db.js';
+import { notify } from '../src/lib/notify.js';
 import { NKT, call, closeApp, freshPhone, login } from './helpers.js';
 
 after(async () => {
@@ -202,6 +203,34 @@ describe('lists and privacy', () => {
     assert.equal(r.body.accepted, 1);
     const e = await prisma.event.findFirst({ where: { name: 'card_tap', restaurantId: id }, orderBy: { createdAt: 'desc' } });
     assert.deepEqual(e?.props, { position: 3 });
+  });
+});
+
+describe('push notifications', () => {
+  test('a registered phone gets a push copy of in-app notices until it signs out', async () => {
+    const me = await login(freshPhone(), 'Push Tester');
+    const token = `ExponentPushToken[test-${Date.now()}]`;
+    const bad = await call('PUT', '/v1/me/push-tokens', { token: me.accessToken, body: { token: 'nope', platform: 'android', app: 'diner' } });
+    assert.equal(bad.status, 400);
+    const ok = await call('PUT', '/v1/me/push-tokens', { token: me.accessToken, body: { token, platform: 'android', app: 'diner' } });
+    assert.equal(ok.status, 200);
+
+    await notify({ userId: me.user.id, channel: 'in_app', template: 'review_published', payload: { restaurant: 'Test Dhaba' } });
+    const push = await prisma.notification.findFirst({ where: { userId: me.user.id, channel: 'push' } });
+    assert.equal(push?.template, 'review_published');
+    assert.equal(push?.status, 'pending');
+    // Push rows never show in the in-app list.
+    const list = await call('GET', '/v1/me/notifications', { token: me.accessToken });
+    assert.equal(list.body.data.length, 1);
+
+    // Turning push off in preferences stops new push copies.
+    await prisma.user.update({ where: { id: me.user.id }, data: { notificationPrefs: { push: false } } });
+    await notify({ userId: me.user.id, channel: 'in_app', template: 'review_published', payload: { restaurant: 'Test Dhaba' } });
+    assert.equal(await prisma.notification.count({ where: { userId: me.user.id, channel: 'push' } }), 1);
+
+    await call('POST', '/v1/auth/logout', { body: { refreshToken: me.refreshToken, pushToken: token } });
+    assert.equal(await prisma.pushToken.count({ where: { token } }), 0);
+    await prisma.notification.deleteMany({ where: { userId: me.user.id } });
   });
 });
 

@@ -4,7 +4,9 @@ Restaurant discovery for small towns in Rajasthan: menus, timings, photos and re
 
 ```
 apps/api   Fastify + Prisma + PostgreSQL/PostGIS — REST API under /v1, background worker
-apps/web   Next.js 16 — diner site, partner portal, field app (offline), admin console
+apps/web        Next.js 16 — diner site, partner portal, field app (offline), admin console
+apps/mobile     Expo (React Native) — the diner app and the field team's app, two store apps from one codebase
+packages/shared Translations (Hindi/English), API types and formatting used by web and mobile
 ```
 
 ## Run locally
@@ -41,6 +43,7 @@ Sign in with any 10-digit mobile number. In development the OTP is shown on scre
 ```bash
 cd apps/api && npm run typecheck && npm test && npm run test:api   # test:api resets twiggytomato_test
 cd apps/web && npx tsc --noEmit && npm run lint && npm run build
+cd apps/mobile && npx tsc --noEmit && npx expo lint
 ```
 
 ## Optional services
@@ -65,5 +68,6 @@ Production also needs a 32+ character `JWT_SECRET`, `INTERNAL_API_KEY` shared by
 - **Fastify instead of NestJS** — same TypeScript, modular routes, zod validation.
 - **Search runs in PostgreSQL** (PostGIS radius + pg_trgm typo tolerance + a synonyms table) instead of OpenSearch. `listRestaurants` in `apps/api/src/lib/restaurants.ts` is the single place to swap in a search index.
 - **Background jobs run in-process** with a Postgres advisory lock and a notification outbox table, instead of Redis + BullMQ. Set `WORKER=off` to run them elsewhere.
-- **Field app is an offline web app** (IndexedDB queue + service worker) rather than React Native. The native diner and field apps are not built yet.
+- **Field app exists twice**: the native app in `apps/mobile` (SQLite queue, spec 7.3) and an offline web version at `/field` for phones that can't install it.
+- **Maps in the apps use Leaflet + OpenStreetMap in a WebView**, like the website, instead of the Google Maps SDK — no API key, works in Expo Go. Set `EXPO_PUBLIC_MAP_TILES` to a paid tile provider before launch.
 - The API speaks camelCase JSON and whole rupees; money is stored in paise (spec 9).

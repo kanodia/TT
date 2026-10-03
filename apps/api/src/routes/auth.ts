@@ -115,8 +115,10 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post('/v1/auth/logout', async (req) => {
-    const { refreshToken } = parse(z.object({ refreshToken: z.string().optional() }), req.body ?? {});
+    const { refreshToken, pushToken } = parse(z.object({ refreshToken: z.string().optional(), pushToken: z.string().optional() }), req.body ?? {});
     if (refreshToken) await revokeRefreshToken(refreshToken);
+    // A signed-out phone must stop getting that account's notifications.
+    if (pushToken) await prisma.pushToken.deleteMany({ where: { token: pushToken } });
     return { ok: true };
   });
 
@@ -193,6 +195,18 @@ export async function authRoutes(app: FastifyInstance) {
   app.delete('/v1/me/addresses/:aid', async (req) => {
     const { id } = await requireUser(req);
     await prisma.userAddress.deleteMany({ where: { id: (req.params as { aid: string }).aid, userId: id } });
+    return { ok: true };
+  });
+
+  // ---- Push (mobile apps) ----
+  // Re-registering moves a token to whoever is signed in now, so a shared phone only alerts its current user.
+  app.put('/v1/me/push-tokens', async (req) => {
+    const { id } = await requireUser(req);
+    const body = parse(
+      z.object({ token: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, 'Not an Expo push token'), platform: z.enum(['ios', 'android']), app: z.enum(['diner', 'field']) }),
+      req.body,
+    );
+    await prisma.pushToken.upsert({ where: { token: body.token }, create: { ...body, userId: id }, update: { ...body, userId: id } });
     return { ok: true };
   });
 

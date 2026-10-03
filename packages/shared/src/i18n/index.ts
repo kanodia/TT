@@ -1,3 +1,4 @@
+import { app } from './app';
 import { common } from './common';
 import { diner } from './diner';
 import { field } from './field';
@@ -5,11 +6,11 @@ import { partner } from './partner';
 
 // All user-facing strings live here (spec 11.1, 11.6). `{brand}` and other `{vars}` are filled in
 // at render time, so a rebrand or a new language needs no screen changes.
-export const en = { ...common.en, ...diner.en, ...partner.en, ...field.en };
+export const en = { ...common.en, ...diner.en, ...partner.en, ...field.en, ...app.en };
 export type MessageKey = keyof typeof en;
 export type Lang = 'en' | 'hi';
 
-const hi: Partial<Record<MessageKey, string>> = { ...common.hi, ...diner.hi, ...partner.hi, ...field.hi };
+const hi: Partial<Record<MessageKey, string>> = { ...common.hi, ...diner.hi, ...partner.hi, ...field.hi, ...app.hi };
 const dictionaries: Record<Lang, Partial<Record<MessageKey, string>>> = { en, hi };
 
 export type Vars = Record<string, string | number | null | undefined>;
