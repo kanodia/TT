@@ -34,9 +34,7 @@ Push notifications don't work in Expo Go on Android; they need a build (below).
 ## Builds (EAS)
 
 ```bash
-npx eas-cli@latest login
-APP_VARIANT=diner npx eas-cli@latest init   # once per app; put the ids in EAS_PROJECT_ID_DINER / EAS_PROJECT_ID_FIELD
-APP_VARIANT=field npx eas-cli@latest init
+npx eas-cli@latest login            # projects tt-diner / tt-field under abhishekkanodia, ids in app.config.ts
 npx eas-cli@latest build --profile diner-preview -p android   # installable APK for testers
 npx eas-cli@latest build --profile field-preview -p android
 ```

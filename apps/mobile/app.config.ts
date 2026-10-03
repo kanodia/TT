@@ -9,8 +9,8 @@ const ID_PREFIX = process.env.APP_ID_PREFIX ?? 'com.twiggytomato';
 const BRAND = '#e23744';
 
 const apps = {
-  diner: { name: 'TwiggyTomato', slug: 'tt-diner', scheme: 'ttdiner', id: `${ID_PREFIX}.diner` },
-  field: { name: 'TT Field', slug: 'tt-field', scheme: 'ttfield', id: `${ID_PREFIX}.field` },
+  diner: { name: 'TwiggyTomato', slug: 'tt-diner', scheme: 'ttdiner', id: `${ID_PREFIX}.diner`, easProjectId: '945500d2-9f3a-4aac-928e-d161d9298144' },
+  field: { name: 'TT Field', slug: 'tt-field', scheme: 'ttfield', id: `${ID_PREFIX}.field`, easProjectId: '9486489c-8827-4132-b738-74f92e16c942' },
 } as const;
 const app = apps[variant];
 const why =
@@ -20,6 +20,7 @@ const why =
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
+  owner: 'abhishekkanodia',
   name: app.name,
   slug: app.slug,
   scheme: app.scheme,
@@ -56,7 +57,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   experiments: { typedRoutes: true, reactCompiler: true },
   extra: {
     variant,
-    // Each app is its own Expo project (`APP_VARIANT=… npx eas-cli init`); push tokens need its id.
-    eas: { projectId: variant === 'field' ? process.env.EAS_PROJECT_ID_FIELD : process.env.EAS_PROJECT_ID_DINER },
+    // Each app is its own Expo project; builds and push tokens need its id.
+    eas: { projectId: app.easProjectId },
   },
 });
