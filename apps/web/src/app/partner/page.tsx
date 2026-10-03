@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { PageTitle } from '@/components/Shell';
+import { InstallPrompt } from '@/components/partner/InstallPrompt';
 import { Cover, Empty, ErrorNote, Loading, RatingBadge, StatusPill } from '@/components/ui';
 import type { MessageKey } from '@/i18n';
 import { ago } from '@/lib/format';
@@ -35,6 +36,8 @@ export default function PartnerHome() {
           </>
         }
       />
+
+      <InstallPrompt />
 
       {claims.length > 0 && (
         <div className="card divide-y divide-border">

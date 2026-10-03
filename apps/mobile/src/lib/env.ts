@@ -1,8 +1,10 @@
 import Constants from 'expo-constants';
 
 /** Which of the two apps this build is (app.config.ts → extra.variant). */
-export const VARIANT: 'diner' | 'field' = Constants.expoConfig?.extra?.variant === 'field' ? 'field' : 'diner';
+const v = Constants.expoConfig?.extra?.variant;
+export const VARIANT: 'diner' | 'field' | 'partner' = v === 'field' || v === 'partner' ? v : 'diner';
 export const IS_FIELD = VARIANT === 'field';
+export const IS_PARTNER = VARIANT === 'partner';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://twiggytomato-api-staging.onrender.com';
 // Staging only: lets the team use on-screen sign-in codes before SMS is live (see the API's DEV_OTP_KEY).

@@ -43,10 +43,28 @@
       "env": {
         "APP_VARIANT": "field"
       }
+    },
+    "partner-preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "partner"
+      }
+    },
+    "partner-production": {
+      "extends": "base",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "partner"
+      }
     }
   },
   "submit": {
     "diner-production": {},
-    "field-production": {}
+    "field-production": {},
+    "partner-production": {}
   }
 }

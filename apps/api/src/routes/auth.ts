@@ -203,7 +203,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.put('/v1/me/push-tokens', async (req) => {
     const { id } = await requireUser(req);
     const body = parse(
-      z.object({ token: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, 'Not an Expo push token'), platform: z.enum(['ios', 'android']), app: z.enum(['diner', 'field']) }),
+      z.object({ token: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, 'Not an Expo push token'), platform: z.enum(['ios', 'android']), app: z.enum(['diner', 'field', 'partner']) }),
       req.body,
     );
     await prisma.pushToken.upsert({ where: { token: body.token }, create: { ...body, userId: id }, update: { ...body, userId: id } });

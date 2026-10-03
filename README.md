@@ -5,7 +5,7 @@ Restaurant discovery for small towns in Rajasthan: menus, timings, photos and re
 ```
 apps/api   Fastify + Prisma + PostgreSQL/PostGIS — REST API under /v1, background worker
 apps/web        Next.js 16 — diner site, partner portal, field app (offline), admin console
-apps/mobile     Expo (React Native) — the diner app and the field team's app, two store apps from one codebase
+apps/mobile     Expo (React Native) — diner, field-team and restaurant-partner apps, three store apps from one codebase
 packages/shared Translations (Hindi/English), API types and formatting used by web and mobile
 ```
 

@@ -13,3 +13,4 @@ function channel<T>() {
 }
 
 export const reviewPosted = channel<{ restaurantId: string; held: boolean }>();
+export const menuChanged = channel<{ restaurantId: string }>();

@@ -7,7 +7,7 @@ import { useSession } from '@/lib/session';
 import { C, Chip, Row, Txt } from './ui';
 
 /** "HH:MM" text box: digits only, colon added automatically; reports only complete valid times. */
-function TimeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+export function TimeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const [draft, setDraft] = useState(value);
   const [prev, setPrev] = useState(value);
   if (prev !== value) {
