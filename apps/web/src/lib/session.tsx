@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { plural, translate, type Lang, type MessageKey, type Vars } from '@/i18n';
 import { api, getRefreshToken, getToken, setTokens, track } from './api';
-import type { AppConfig, Me } from './types';
+import type { AppConfig, Me } from '@/lib/types';
 
 export type Place = { lat: number; lng: number; label: string; cityId?: string | null; precise?: boolean; isLive?: boolean };
 

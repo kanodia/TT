@@ -19,6 +19,10 @@
       }
     ],
     "paths": {
+      "@/i18n": ["../../packages/shared/src/i18n"],
+      "@/lib/types": ["../../packages/shared/src/types"],
+      "@/lib/format": ["../../packages/shared/src/format"],
+      "@shared/*": ["../../packages/shared/src/*"],
       "@/*": ["./src/*"]
     }
   },

@@ -57,6 +57,31 @@ async function sendEmail(to: string, subject: string, body: string) {
   return 'sent';
 }
 
+type PushTicket = { status: 'ok' | 'error'; id?: string; message?: string; details?: { error?: string } };
+
+/** Sends to every phone the user has the app on, through Expo's push service (FCM/APNs underneath). */
+async function sendPush(userId: string, title: string, body: string, data: Record<string, unknown>) {
+  const tokens = await prisma.pushToken.findMany({ where: { userId } });
+  if (!tokens.length) return 'skipped';
+  const res = await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      accept: 'application/json',
+      ...(process.env.EXPO_ACCESS_TOKEN ? { authorization: `Bearer ${process.env.EXPO_ACCESS_TOKEN}` } : {}),
+    },
+    body: JSON.stringify(tokens.map((t) => ({ to: t.token, title, body, data, sound: 'default', channelId: 'default' }))),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`Expo push ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const tickets = ((await res.json()) as { data?: PushTicket[] }).data ?? [];
+  // Uninstalled apps or revoked permission: stop sending to that phone until it registers again.
+  const dead = tokens.filter((_, i) => tickets[i]?.details?.error === 'DeviceNotRegistered').map((t) => t.token);
+  if (dead.length) await prisma.pushToken.deleteMany({ where: { token: { in: dead } } });
+  if (!tickets.some((t) => t.status === 'ok')) throw new Error(tickets[0]?.message ?? 'push rejected');
+  return 'sent';
+}
+
 export async function deliverNotifications(log: Log) {
   const due = await prisma.notification.findMany({
     where: { status: 'pending', sendAfter: { lte: new Date() }, channel: { in: ['sms', 'email', 'push'] } },
@@ -68,13 +93,12 @@ export async function deliverNotifications(log: Log) {
   for (const n of due) {
     const render = TEMPLATES[n.template as Template] as (p: never, b: string) => { title: string; body: string };
     try {
-      if (!render || !n.to) throw new Error('no template or recipient');
+      if (!render || !(n.channel === 'push' ? n.userId : n.to)) throw new Error('no template or recipient');
       const { title, body } = render(n.payload as never, brand);
       let result: string;
-      if (n.channel === 'sms') result = await sendSms(n.to, body);
-      else if (n.channel === 'email') result = await sendEmail(n.to, title, body);
-      // Push needs device tokens from the mobile apps; nothing to send to yet.
-      else result = 'skipped';
+      if (n.channel === 'sms') result = await sendSms(n.to!, body);
+      else if (n.channel === 'email') result = await sendEmail(n.to!, title, body);
+      else result = await sendPush(n.userId!, title, body, { template: n.template, ...(n.payload as object) });
       if (result === 'logged') log.info({ channel: n.channel, to: n.to, template: n.template }, `[notify:dev] ${title} — ${body}`);
       await prisma.notification.update({
         where: { id: n.id },

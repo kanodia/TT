@@ -1,4 +1,4 @@
-import type { Lang, MessageKey, Vars } from '@/i18n';
+import type { Lang, MessageKey, Vars } from './i18n';
 import type { Named, OpenStatus, Shift } from './types';
 
 export type { Lang };
@@ -132,6 +132,7 @@ export function placeholderFor(seed: string, cuisineSlug?: string) {
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = hues[h % hues.length];
   return {
+    hue,
     background: `linear-gradient(135deg, hsl(${hue} 70% 92%), hsl(${(hue + 25) % 360} 65% 82%))`,
     emoji: (cuisineSlug && EMOJI[cuisineSlug]) || '🍽️',
   };

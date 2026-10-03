@@ -65,3 +65,22 @@ jobs:
       - run: npm run lint
       # Pages fall back to default metadata when the API isn't reachable, so the build needs no API.
       - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx expo lint
+      # Both store apps must have a valid config.
+      - run: APP_VARIANT=diner npx expo config --type public > /dev/null
+      - run: APP_VARIANT=field npx expo config --type public > /dev/null

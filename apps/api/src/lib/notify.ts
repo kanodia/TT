@@ -51,7 +51,7 @@ export async function notify(opts: {
   payload?: Record<string, unknown>;
   sendAfter?: Date;
 }) {
-  return prisma.notification.create({
+  const created = await prisma.notification.create({
     data: {
       userId: opts.userId ?? null,
       to: opts.to ?? null,
@@ -63,6 +63,16 @@ export async function notify(opts: {
       ...(opts.channel === 'in_app' ? { status: 'sent', sentAt: new Date() } : {}),
     },
   });
+  // In-app notices also go to the user's phones when they have the app and haven't turned push off.
+  if (opts.channel === 'in_app' && opts.userId) {
+    const user = await prisma.user.findUnique({ where: { id: opts.userId }, select: { notificationPrefs: true, _count: { select: { pushTokens: true } } } });
+    if (user?._count.pushTokens && (user.notificationPrefs as Prefs).push !== false) {
+      await prisma.notification.create({
+        data: { userId: opts.userId, channel: 'push', template: opts.template, payload: json({ ...(opts.payload ?? {}), notificationId: created.id }) as object, sendAfter: opts.sendAfter ?? new Date() },
+      });
+    }
+  }
+  return created;
 }
 
 /** Notify a restaurant's team (owners/managers by default) in-app, plus SMS where they opted in. */
