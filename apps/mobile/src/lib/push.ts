@@ -60,6 +60,14 @@ export function notificationTarget(data: Record<string, unknown> | undefined): s
   if (!data) return null;
   const template = String(data.template ?? '');
   if (VARIANT === 'field') return template === 'capture_sent_back' ? '/field/queue' : '/field';
+  if (VARIANT === 'partner') {
+    const id = typeof data.restaurantId === 'string' ? data.restaurantId : null;
+    if (!id) return '/partner';
+    if (template === 'review_new' || template === 'review_digest') return `/partner/${id}/reviews`;
+    if (template === 'hours_reminder') return `/partner/${id}/hours`;
+    if (template === 'menu_reminder') return `/partner/${id}/menu`;
+    return `/partner/${id}`;
+  }
   return '/notifications';
 }
 

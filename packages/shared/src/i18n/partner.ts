@@ -321,6 +321,11 @@ const en = {
   'bulk.menuButton': 'Copy to {n} outlet(s)',
   'bulk.menuCopied': 'Menu copied to {n} outlet(s).',
   'bulk.confirmReplace': 'Replace the menus of {n} outlet(s)? Their current dishes will be deleted.',
+  'partner.install.title': 'Get the partner app',
+  'partner.install.body': 'Add it to your home screen: one tap to update your menu, hours and offers, and reply to reviews.',
+  'partner.install.ios': 'In Safari, tap Share, then “Add to Home Screen”.',
+  'partner.install.cta': 'Install',
+  'partner.install.later': 'Not now',
 };
 
 const hi: Partial<Record<keyof typeof en, string>> = {
@@ -645,6 +650,11 @@ const hi: Partial<Record<keyof typeof en, string>> = {
   'bulk.menuButton': '{n} आउटलेट पर कॉपी करें',
   'bulk.menuCopied': '{n} आउटलेट पर मेन्यू कॉपी हुआ।',
   'bulk.confirmReplace': '{n} आउटलेट के मेन्यू बदलें? उनके मौजूदा व्यंजन हट जाएँगे।',
+  'partner.install.title': 'पार्टनर ऐप पाएँ',
+  'partner.install.body': 'इसे होम स्क्रीन पर जोड़ें: एक टैप में मेन्यू, समय और ऑफ़र बदलें, और रिव्यू का जवाब दें।',
+  'partner.install.ios': 'Safari में Share दबाएँ, फिर “Add to Home Screen”।',
+  'partner.install.cta': 'इंस्टॉल करें',
+  'partner.install.later': 'अभी नहीं',
 };
 
 export const partner = { en, hi };

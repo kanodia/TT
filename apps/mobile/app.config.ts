@@ -1,8 +1,8 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-// One codebase, two store apps (spec 8.1): the diner app and the field team's app.
+// One codebase, three store apps: the diner app and field app (spec 8.1), and a phone app for restaurant partners.
 // APP_VARIANT picks which one is built; screens read it from `extra.variant`.
-const variant = process.env.APP_VARIANT === 'field' ? 'field' : 'diner';
+const variant = process.env.APP_VARIANT === 'field' ? 'field' : process.env.APP_VARIANT === 'partner' ? 'partner' : 'diner';
 // Company-based ids, not the brand (spec 11.6), so a rebrand doesn't change store identities.
 // Decide the final prefix before the first store upload: ids can't change after publishing.
 const ID_PREFIX = process.env.APP_ID_PREFIX ?? 'com.twiggytomato';
@@ -10,13 +10,15 @@ const BRAND = '#e23744';
 
 const apps = {
   diner: { name: 'TwiggyTomato', slug: 'tt-diner', scheme: 'ttdiner', id: `${ID_PREFIX}.diner`, easProjectId: '945500d2-9f3a-4aac-928e-d161d9298144' },
+  partner: { name: 'TwiggyTomato Partner', slug: 'tt-partner', scheme: 'ttpartner', id: `${ID_PREFIX}.partner`, easProjectId: '636eb12d-39a8-47fd-8df1-ed5f164d713e' },
   field: { name: 'TT Field', slug: 'tt-field', scheme: 'ttfield', id: `${ID_PREFIX}.field`, easProjectId: '9486489c-8827-4132-b738-74f92e16c942' },
 } as const;
 const app = apps[variant];
-const why =
-  variant === 'field'
-    ? { location: 'Your location pins each place you capture and shows your assigned area.', camera: 'Take storefront, menu and food photos of places you visit.' }
-    : { location: 'Your location is used to show restaurants near you. It is not stored.', camera: 'Take photos to add to your review.' };
+const why = {
+  field: { location: 'Your location pins each place you capture and shows your assigned area.', camera: 'Take storefront, menu and food photos of places you visit.' },
+  partner: { location: 'Your location helps place your restaurant correctly on the map.', camera: 'Take photos of your food, menu and restaurant.' },
+  diner: { location: 'Your location is used to show restaurants near you. It is not stored.', camera: 'Take photos to add to your review.' },
+}[variant];
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,

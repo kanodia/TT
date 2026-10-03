@@ -79,7 +79,7 @@ model PushToken {
   userId    String
   token     String   @unique
   platform  String // ios | android
-  app       String // diner | field
+  app       String // diner | field | partner
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

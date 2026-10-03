@@ -81,6 +81,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx expo lint
-      # Both store apps must have a valid config.
+      # All three store apps must have a valid config.
       - run: APP_VARIANT=diner npx expo config --type public > /dev/null
       - run: APP_VARIANT=field npx expo config --type public > /dev/null
+      - run: APP_VARIANT=partner npx expo config --type public > /dev/null

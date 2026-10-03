@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { C } from '@/components/ui';
-import { IS_FIELD } from '@/lib/env';
+import { IS_FIELD, IS_PARTNER } from '@/lib/env';
 import { onNotificationTap } from '@/lib/push';
 import { SessionProvider, useBrand, useSession } from '@/lib/session';
 
@@ -29,11 +29,14 @@ function Navigator() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerTintColor: brand, headerTitleStyle: { color: C.text }, headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: C.bg } }}>
         {/* Each build shows only its own app; the other's screens are unreachable. */}
-        <Stack.Protected guard={!IS_FIELD}>
+        <Stack.Protected guard={!IS_FIELD && !IS_PARTNER}>
           <Stack.Screen name="(diner)" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Protected guard={IS_FIELD}>
           <Stack.Screen name="field" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={IS_PARTNER}>
+          <Stack.Screen name="partner" options={{ headerShown: false }} />
         </Stack.Protected>
         <Stack.Screen name="login" options={{ presentation: 'modal', title: t('auth.signIn') }} />
       </Stack>

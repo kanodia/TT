@@ -29,6 +29,17 @@ const en = {
   'fme.unsentBody': 'Signing out deletes them from this phone. Get signal and upload first if you can.',
   'fcap.gpsWaiting': 'Getting GPS…',
   'fcap.gpsAccuracy': 'GPS accurate to {m} m',
+  'papp.more': 'More',
+  'papp.webForDocs': 'Adding or claiming a restaurant needs documents, so it opens on the website.',
+  'papp.submitOnWeb': 'Upload your licence and ownership documents on the website to send the listing for review.',
+  'papp.menuStart': 'Add a section such as “Main course”, then add dishes with prices.',
+  'papp.importOnWeb': 'Import a full menu (spreadsheet)',
+  'papp.soldOut': 'Marked sold out',
+  'papp.backOn': 'Back on the menu',
+  'papp.noEnd': 'No end date',
+  'papp.endsIn': 'For {n} days',
+  'papp.closedFor': '{n} days',
+  'papp.onWebsite': 'These open the partner website:',
 };
 
 const hi: Partial<Record<keyof typeof en, string>> = {
@@ -61,6 +72,17 @@ const hi: Partial<Record<keyof typeof en, string>> = {
   'fme.unsentBody': 'साइन आउट करने से ये इस फ़ोन से मिट जाएँगी। हो सके तो पहले सिग्नल लेकर अपलोड करें।',
   'fcap.gpsWaiting': 'GPS ले रहे हैं…',
   'fcap.gpsAccuracy': 'GPS {m} मीटर तक सटीक',
+  'papp.more': 'और',
+  'papp.webForDocs': 'रेस्टोरेंट जोड़ने या क्लेम करने के लिए दस्तावेज़ चाहिए, इसलिए यह वेबसाइट पर खुलता है।',
+  'papp.submitOnWeb': 'लिस्टिंग जाँच के लिए भेजने को वेबसाइट पर लाइसेंस और मालिकाना दस्तावेज़ अपलोड करें।',
+  'papp.menuStart': '“मेन कोर्स” जैसा सेक्शन जोड़ें, फिर दाम के साथ व्यंजन जोड़ें।',
+  'papp.importOnWeb': 'पूरा मेन्यू इम्पोर्ट करें (स्प्रेडशीट)',
+  'papp.soldOut': 'खत्म के रूप में चिह्नित',
+  'papp.backOn': 'मेन्यू पर फिर से उपलब्ध',
+  'papp.noEnd': 'कोई अंतिम तारीख नहीं',
+  'papp.endsIn': '{n} दिन के लिए',
+  'papp.closedFor': '{n} दिन',
+  'papp.onWebsite': 'ये पार्टनर वेबसाइट पर खुलते हैं:',
 };
 
 export const app = { en, hi };
