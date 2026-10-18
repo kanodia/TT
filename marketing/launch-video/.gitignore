@@ -1,0 +1,4 @@
+node_modules
+out
+# Remotion agent skills: restore with `npx skills experimental_install` (see skills-lock.json)
+.claude/skills
